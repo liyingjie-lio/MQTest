@@ -8,41 +8,162 @@
 <body>
 <input type="file" id="fileInput">
 <button onclick="uploadImage()">Upload</button>
+
+<input type="file" id="identityFileInput">
+<button onclick="uploadIdentityImage()">Upload Identity</button>
+
+<input type="file" id="faceFileInput">
+<button onclick="uploadFaceImage()">Upload Identity</button>
+
+<input type="file" id="voiceInput">
+<button onclick="uploadVoice()">Upload Voice</button>
+
 <div id="result"></div>
+<div id="identityResult"></div>
+<div id="face"></div>
 
 <script>
     function uploadImage() {
         const fileInput = document.getElementById('fileInput');
         const file = fileInput.files[0];
         const formData = new FormData();
-        const reader = new FileReader();
 
-        reader.onloadend = function() {
-            formData.append('file', file);
+        formData.append('file', file);
 
-            fetch('http://localhost:8080/api/upload', {  // 确保URL正确
-                method: 'POST',
-                body: formData
+        fetch('http://localhost:8080/api/upload', {  // 确保URL正确
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.text())
+            .then(requestId => {
+                console.log(requestId)
+                pollResult(requestId, 'result');
             })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function uploadIdentityImage() {
+        const identityFileInput = document.getElementById('identityFileInput');
+        const file = identityFileInput.files[0];
+        const formData = new FormData();
+
+        formData.append('file', file);
+
+        fetch('http://localhost:8080/api/identity', {  // 确保URL正确
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.text())
+            .then(requestId => {
+                console.log(requestId)
+                pollResult1(requestId, 'identityResult');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+
+
+    function uploadFaceImage() {
+        const identityFileInput = document.getElementById('faceFileInput');
+        const file = identityFileInput.files[0];
+        const formData = new FormData();
+
+        formData.append('file', file);
+
+        fetch('http://localhost:8080/api/face', {  // 确保URL正确
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.text())
+            .then(requestId => {
+                console.log(requestId)
+                pollResult2(requestId, 'identityResult');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function uploadVoice() {
+        const identityFileInput = document.getElementById('voiceInput');
+        const file = identityFileInput.files[0];
+        const formData = new FormData();
+
+        formData.append('file', file);
+
+        fetch('http://localhost:8080/api/voice', {  // 确保URL正确
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.text())
+            .then(requestId => {
+                console.log(requestId)
+                pollResult3(requestId, 'identityResult');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function pollResult(requestId, resultElementId) {
+        const interval = setInterval(() => {
+            fetch(`http://localhost:8080/api/upload/${requestId}`)  // 确保URL正确
                 .then(response => response.text())
-                .then(requestId => {
-                    pollResult(requestId);
+                .then(result => {
+                    if (result) {
+                        document.getElementById(resultElementId).innerText = result;
+                        clearInterval(interval);
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                 });
-        };
-
-        reader.readAsDataURL(file);
+        }, 2000); // 每2秒轮询一次
     }
 
-    function pollResult(requestId) {
+    function pollResult1(requestId, resultElementId) {
         const interval = setInterval(() => {
-            fetch(`http://localhost:8080/api/result/${requestId}`)  // 确保URL正确
+            fetch(`http://localhost:8080/api/identity/${requestId}`)  // 确保URL正确
                 .then(response => response.text())
                 .then(result => {
                     if (result) {
-                        document.getElementById('result').innerText = result;
+                        document.getElementById(resultElementId).innerText = result;
+                        clearInterval(interval);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }, 2000); // 每2秒轮询一次
+    }
+
+    function pollResult2(requestId, resultElementId) {
+        const interval = setInterval(() => {
+            fetch(`http://localhost:8080/api/face/${requestId}`)  // 确保URL正确
+                .then(response => response.text())
+                .then(result => {
+                    if (result) {
+                        document.getElementById(resultElementId).innerText = result;
+                        clearInterval(interval);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }, 2000); // 每2秒轮询一次
+    }
+
+    function pollResult3(requestId, resultElementId) {
+        const interval = setInterval(() => {
+            fetch(`http://localhost:8080/api/voice/${requestId}`)  // 确保URL正确
+                .then(response => response.text())
+                .then(result => {
+                    if (result) {
+                        document.getElementById(resultElementId).innerText = result;
                         clearInterval(interval);
                     }
                 })

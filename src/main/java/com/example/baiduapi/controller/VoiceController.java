@@ -1,9 +1,9 @@
 package com.example.baiduapi.controller;
 
-import com.example.baiduapi.mq.consumer.IdentityConsumer;
 import com.example.baiduapi.mq.consumer.ObjectConsumer;
-import com.example.baiduapi.mq.producer.IdentityProducer;
+import com.example.baiduapi.mq.consumer.VoiceConsumer;
 import com.example.baiduapi.mq.producer.ObjectProducer;
+import com.example.baiduapi.mq.producer.VoiceProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,24 +13,26 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
-public class UploadController {
+public class VoiceController {
     @Autowired
-    private ObjectProducer messageProducer;
+    private VoiceProducer voiceProducer;
 
     @Autowired
-    private ObjectConsumer messageConsumer;
+    private VoiceConsumer voiceConsumer;
 
 
-    @PostMapping("/upload")
-    public String uploadImage(@RequestParam("file") MultipartFile file) {
+    @PostMapping("/voice")
+    public String uploadVoice(@RequestParam("file") MultipartFile file) {
         try {
             byte[] bytes = file.getBytes();
             String base64Image = Base64.getEncoder().encodeToString(bytes);
             // 去除前缀
             base64Image = base64Image.replaceAll("^data:image/[^;]+;base64,", "");
+            Integer s = base64Image.length();
+            System.out.println("length=================" + s);
             String requestId = UUID.randomUUID().toString();
             System.out.println(requestId);
-            messageProducer.sendMessage(requestId, base64Image);
+            voiceProducer.sendMessage(requestId, base64Image);
             return requestId;
         } catch (Exception e) {
             e.printStackTrace();
@@ -38,11 +40,8 @@ public class UploadController {
         }
     }
 
-    @GetMapping("/upload/{requestId}")
+    @GetMapping("/voice/{requestId}")
     public String getResult(@PathVariable String requestId) {
-        return messageConsumer.getResult(requestId);
+        return voiceConsumer.getResult(requestId);
     }
-
-
-
 }

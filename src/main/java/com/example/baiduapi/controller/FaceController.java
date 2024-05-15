@@ -1,8 +1,8 @@
 package com.example.baiduapi.controller;
 
-import com.example.baiduapi.mq.consumer.IdentityConsumer;
+import com.example.baiduapi.mq.consumer.FaceConsumer;
 import com.example.baiduapi.mq.consumer.ObjectConsumer;
-import com.example.baiduapi.mq.producer.IdentityProducer;
+import com.example.baiduapi.mq.producer.FaceProducer;
 import com.example.baiduapi.mq.producer.ObjectProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -13,16 +13,16 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
-public class UploadController {
+public class FaceController {
     @Autowired
-    private ObjectProducer messageProducer;
+    private FaceProducer faceProducer;
 
     @Autowired
-    private ObjectConsumer messageConsumer;
+    private FaceConsumer faceConsumer;
 
 
-    @PostMapping("/upload")
-    public String uploadImage(@RequestParam("file") MultipartFile file) {
+    @PostMapping("/face")
+    public String faceImage(@RequestParam("file") MultipartFile file) {
         try {
             byte[] bytes = file.getBytes();
             String base64Image = Base64.getEncoder().encodeToString(bytes);
@@ -30,7 +30,7 @@ public class UploadController {
             base64Image = base64Image.replaceAll("^data:image/[^;]+;base64,", "");
             String requestId = UUID.randomUUID().toString();
             System.out.println(requestId);
-            messageProducer.sendMessage(requestId, base64Image);
+            faceProducer.sendMessage(requestId, base64Image);
             return requestId;
         } catch (Exception e) {
             e.printStackTrace();
@@ -38,11 +38,9 @@ public class UploadController {
         }
     }
 
-    @GetMapping("/upload/{requestId}")
+    @GetMapping("/face/{requestId}")
     public String getResult(@PathVariable String requestId) {
-        return messageConsumer.getResult(requestId);
+        return faceConsumer.getResult(requestId);
     }
-
-
 
 }
