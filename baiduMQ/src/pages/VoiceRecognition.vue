@@ -1,116 +1,71 @@
 <template>
   <div>
     <h1>语音识别</h1>
-    <el-upload
-        class="upload-demo"
-        action="https://fake-url.com/upload"
-        :on-success="handleSuccess"
-        :before-upload="handleBeforeUpload"
-        :http-request="customUpload">
-      <el-button size="small" type="primary">点击上传音频文件</el-button>
-    </el-upload>
-    <el-button @click="startRecording" :disabled="isRecording">开始录音</el-button>
-    <el-button @click="stopRecording" :disabled="!isRecording">停止录音</el-button>
-    <audio v-if="audioUrl" :src="audioUrl" controls></audio>
-    <el-divider></el-divider>
-    <div>结果展示</div>
-    <el-card v-if="recognitionResult" class="result-card">
-      <h2>识别结果</h2>
-      <p>{{ recognitionResult }}</p>
-    </el-card>
+    <input type="file" @change="handleFileChange" accept="audio/*">
+    <el-button @click="uploadVoice" :disabled="!audioFile">上传音频</el-button>
+    <el-button @click="startPolling" :disabled="!requestId">获取识别结果</el-button>
+    <div v-if="result">
+      <h3>识别结果：</h3>
+      <p>{{ resultText }}</p>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import 'element-plus/es/components/message/style/css'
+import { ref } from 'vue';
+import myAxios from "../plugins/myAxios.ts";
 
-export default defineComponent({
+export default {
   setup() {
-    const audioUrl = ref<string | null>(null)
-    const isRecording = ref(false)
-    const recognitionResult = ref<string | null>(null)
-    const mediaRecorder = ref<MediaRecorder | null>(null)
-    let chunks: Blob[] = []
+    const audioFile = ref<File | null>(null);
+    const requestId = ref<string | null>(null);
+    const result = ref<any>(null);
+    const resultText = ref<string>('');
+    let pollInterval = null;
 
-    function handleBeforeUpload(file: File) {
-      if (!file.type.includes('audio/')) {
-        ElMessage.error('请上传音频文件！');
-        return false;
+    const handleFileChange = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      if (target.files) {
+        audioFile.value = target.files[0];
       }
-      return true;
-    }
+    };
 
-    function handleSuccess(response: any, file: File) {
-      recognitionResult.value = response.recognitionResult || '无法识别音频'
-    }
+    const uploadVoice = async () => {
+      if (audioFile.value) {
+        const formData = new FormData();
+        formData.append('file', audioFile.value);
 
-    function customUpload(options: any) {
-      const { onSuccess, onError, file, onProgress } = options;
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      fetch(options.action, {
-        method: 'POST',
-        body: formData,
-      }).then(response => response.json())
-          .then(data => {
-            onSuccess(data, file);
-          })
-          .catch(error => {
-            onError(error);
-            console.error('Upload failed:', error);
-          });
-    }
-
-    function startRecording() {
-      navigator.mediaDevices.getUserMedia({ audio: true })
-          .then(stream => {
-            mediaRecorder.value = new MediaRecorder(stream);
-            mediaRecorder.value.start();
-            mediaRecorder.value.ondataavailable = e => {
-              chunks.push(e.data);
-            };
-            isRecording.value = true;
-            ElMessage.info('录音开始');
-          })
-          .catch(err => {
-            ElMessage.error('录音失败: ' + err.message);
-          });
-    }
-
-    function stopRecording() {
-      if (mediaRecorder.value) {
-        mediaRecorder.value.stop();
-        mediaRecorder.value.onstop = () => {
-          const blob = new Blob(chunks, { type: 'audio/wav' });
-          chunks = [];
-          audioUrl.value = URL.createObjectURL(blob);
-          customUpload({
-            action: 'https://fake-url.com/upload',
-            file: blob,
-            onSuccess: handleSuccess,
-            onError: error => console.error('Upload error:', error),
-          });
-          isRecording.value = false;
-          ElMessage.success('录音结束');
-        };
+        try {
+          const response = await myAxios.post('/voice', formData);
+          requestId.value = response.data; // 服务器返回的请求ID
+          console.log('请求ID:', requestId.value);
+          alert('音频上传成功，请求ID已接收！');
+        } catch (error) {
+          console.error('上传失败:', error);
+          alert('上传失败，请重试！');
+        }
       }
-    }
+    };
 
-    return { audioUrl, isRecording, recognitionResult, handleBeforeUpload, handleSuccess, startRecording, stopRecording, customUpload }
-  }
-})
+    const startPolling = () => {
+      if (requestId.value) {
+        pollInterval = setInterval(async () => {
+          try {
+            const response = await myAxios.get(`/voice/${requestId.value}`);
+            if (response.data && response.data.result) {
+              result.value = response.data;
+              resultText.value = result.value.result.join(' '); // 将结果数组合并为单个字符串
+              clearInterval(pollInterval);
+            }
+          } catch (error) {
+            console.error('获取结果失败:', error);
+            clearInterval(pollInterval);
+          }
+        }, 2000); // 每2秒轮询一次
+      }
+    };
+
+    return { audioFile, requestId, result, resultText, handleFileChange, uploadVoice, startPolling };
+  },
+};
 </script>
-
-<style scoped>
-.result-card {
-  margin-top: 20px;
-  padding: 20px;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-</style>

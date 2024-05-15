@@ -35,6 +35,11 @@ public class UploadController {
         }
     }
 
+    /**
+     * 根据图片uuid，获取图片识别结果
+     * @param requestId
+     * @return
+     */
     @GetMapping("/result/{requestId}")
     public String getResult(@PathVariable String requestId) {
         return messageConsumer.getResult(requestId);

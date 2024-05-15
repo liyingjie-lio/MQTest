@@ -18,14 +18,9 @@ myAxios.interceptors.request.use(function (config) {
 
 // Add a response interceptor
 myAxios.interceptors.response.use(function (response) {
-    console.log('相应拦截', response)
-    // // 未登录则跳转到登录页
-    // if (response?.data?.code === 40100) {
-    //     const redirectUrl = window.location.href; // 获取当前页面的url
-    //     window.location.href = `/user/login?redirect=${redirectUrl}`; // 跳转到登录页，并携带登陆前的url参数到登录页，方便登录后跳转回来
-    // }
-    // Do something with response data
-    return response.data;
+    console.log('响应拦截', response)
+    // return response.data;
+    return response;
 }, function (error) {
     // Do something with response error
     return Promise.reject(error);

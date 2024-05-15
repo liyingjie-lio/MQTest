@@ -1,87 +1,74 @@
 <template>
   <div>
     <h1>图片识别</h1>
-    <input
-        type="file"
-        id="id"
-        name="image"
-        class="getImgUrl_file"
-        @change="shangc($event)"
-        accept="image/jpg, image/jpeg, image/png"
-    />
-    <br />
-    <img :src="picPath" alt="">
-
-    <h4>识别结果:</h4>
-    <table>
-      <tr>
-        <th>物品名称</th>
-        <th>所属类目</th>
-        <th>识别度</th>
-      </tr>
-<!--      <tr v-if="data" v-for="item in data">-->
-<!--        <td>{{ item.keyword }}</td>-->
-<!--        <td>{{ item.root }}</td>-->
-<!--        <td>{{ item.score }}</td>-->
-<!--      </tr>-->
-    </table>
+    <input type="file" @change="handleFileChange" accept="image/*">
+    <el-button @click="uploadImage" :disabled="!imageFile">上传图片</el-button>
+    <el-button @click="startPolling" :disabled="!requestId">获取识别结果</el-button>
+    <div v-if="result">
+      <h3>识别结果：</h3>
+      <p>识别到 {{ result.result_num }} 项:</p>
+      <ul>
+        <li v-for="(item, index) in result.result" :key="index">
+          <strong>{{ item.keyword }}</strong> ({{ item.root }}) - 置信度: {{ item.score.toFixed(3) }}
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
-import axios from 'axios';
+import { ref } from 'vue';
+import myAxios from "../plugins/myAxios.ts";
 
-export default defineComponent({
-  data() {
-    return {
-      data: "",
-      picPath: ""
+export default {
+  setup() {
+    const imageFile = ref<File | null>(null);
+    const requestId = ref<string | null>(null);
+    const result = ref<any>(null);
+    let pollInterval = null;
+
+    const handleFileChange = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      if (target.files) {
+        imageFile.value = target.files[0];
+      }
     };
+
+    const uploadImage = async () => {
+      if (imageFile.value) {
+        const formData = new FormData();
+        formData.append('file', imageFile.value);
+
+        try {
+          const response = await myAxios.post('/upload', formData);
+          requestId.value = response.data; // 服务器返回的请求ID
+          console.log('请求ID:', requestId.value);
+          alert('图片上传成功，请求ID已接收！');
+        } catch (error) {
+          console.error('上传失败:', error);
+          alert('上传失败，请重试！');
+        }
+      }
+    };
+
+    const startPolling = () => {
+      if (requestId.value) {
+        pollInterval = setInterval(async () => {
+          try {
+            const response = await myAxios.get(`/upload/${requestId.value}`);
+            if (response.data && response.data.result && response.data.result.length > 0) {
+              result.value = response.data;
+              clearInterval(pollInterval);
+            }
+          } catch (error) {
+            console.error('获取结果失败:', error);
+            clearInterval(pollInterval);
+          }
+        }, 2000); // 每2秒轮询一次
+      }
+    };
+
+    return { imageFile, requestId, result, handleFileChange, uploadImage, startPolling };
   },
-  methods: {
-    async shangc(e: Event) {
-      let file = (e.target as HTMLInputElement).files![0];
-      if (!file) {
-        return false;
-      }
-
-      let fileSize = file.size;
-      if (fileSize > 10 * 1024 * 1024) {
-        alert("文件大小不能大于10M！");
-        (e.target as HTMLInputElement).value = "";
-        return false;
-      } else if (fileSize <= 0) {
-        alert("文件大小不能为0M！");
-        (e.target as HTMLInputElement).value = "";
-        return false;
-      }
-
-      let reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async (e) => {
-        let imgFile = (e.target as FileReader).result as string;
-        let arr = imgFile.split(",");
-        this.picPath = 'data:image/png;base64,' + arr[1];
-
-        const response = await axios.post("https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general", {
-          access_token: "获取到的access_token",
-          image: arr[1]
-        });
-        this.data = response.data.result;
-      };
-    }
-  }
-});
+};
 </script>
-
-<style scoped>
-table, th, td {
-  border: 1px solid orangered;
-}
-img {
-  width: 400px;
-  height: 400px;
-  border: 1px solid red;
-}
-</style>
